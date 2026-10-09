@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Synthetic Data Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: white;
+            margin: 0;
+            padding: 30px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: auto;
+        }
+        h1 {
+            color: #60a5fa;
+            text-align: center;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #111827;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        .card h3 {
+            margin-top: 0;
+            color: #34d399;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid #334155;
+            font-size: 1rem;
+        }
+        input {
+            background: #0b1220;
+            color: white;
+        }
+        button {
+            background: linear-gradient(135deg, #60a5fa, #34d399);
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            color: #0f172a;
+            transition: transform 0.2s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        pre {
+            background: #020817;
+            padding: 16px;
+            border-radius: 12px;
+            overflow: auto;
+            min-height: 200px;
+            color: #d1fae5;
+            border: 1px solid #334155;
+            max-height: 500px;
+        }
+        .output-section {
+            margin-top: 30px;
+        }
+        .button-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+        .secondary-btn {
+            background: #1f2937;
+            color: white;
+            width: auto;
+            flex: 1;
+            min-width: 150px;
+        }
+        .status-box {
+            background: #111827;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .status-online {
+            color: #34d399;
+        }
+        .status-offline {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Synthetic Data Generator</h1>
+        <p style="text-align: center; color: #9ca3af;">Generate realistic business datasets locally using Ollama or mock data</p>
+
+        <div class="status-box">
+            <span id="statusText">Checking connection...</span>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h3>Customers</h3>
+                <label for="customerCount">Number of customers:</label>
+                <input id="customerCount" type="number" value="5" min="1" max="50">
+                <button onclick="generateCustomers()">Generate Customers</button>
+            </div>
+
+            <div class="card">
+                <h3>Transactions</h3>
+                <label for="customerCountTx">Customer count:</label>
+                <input id="customerCountTx" type="number" value="3" min="1" max="20">
+                <label for="perCustomerTx">Per customer:</label>
+                <input id="perCustomerTx" type="number" value="5" min="1" max="20">
+                <button onclick="generateTransactions()">Generate Transactions</button>
+            </div>
+
+            <div class="card">
+                <h3>Employees</h3>
+                <label for="employeeCount">Number of employees:</label>
+                <input id="employeeCount" type="number" value="5" min="1" max="50">
+                <button onclick="generateEmployees()">Generate Employees</button>
+            </div>
+
+            <div class="card">
+                <h3>Feedback</h3>
+                <label for="feedbackCount">Number of feedback entries:</label>
+                <input id="feedbackCount" type="number" value="5" min="1" max="50">
+                <button onclick="generateFeedback()">Generate Feedback</button>
+            </div>
+        </div>
+
+        <div class="card output-section">
+            <h3>Output</h3>
+            <pre id="outputBox">Generated data will appear here...</pre>
+            <div class="button-row">
+                <button class="secondary-btn" onclick="downloadCSV()">📥 Download CSV</button>
+                <button class="secondary-btn" onclick="copyJSON()">📋 Copy JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = [];
+        let currentType = "customers";
+
+        async function checkStatus() {
+            try {
+                const response = await fetch("/api/status");
+                const data = await response.json();
+                const statusText = document.getElementById("statusText");
+                if (data.status === "online") {
+                    statusText.className = "status-online";
+                    statusText.textContent = "✅ Ollama is online - Generating fresh AI data";
+                } else {
+                    statusText.className = "status-offline";
+                    statusText.textContent = "⚠️  Ollama offline - Using mock data mode";
+                }
+            } catch (error) {
+                document.getElementById("statusText").textContent = "❌ Unable to check status";
+            }
+        }
+
+        async function generateCustomers() {
+            const count = document.getElementById("customerCount").value;
+            const response = await fetch("/api/generate/customers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ count: Number(count) })
+            });
+
+            const json = await response.json();
+            currentData = json.data;
+            currentType = "customers";
+            document.getElementById("outputBox").textContent = JSON.stringify(currentData, null, 2);
+        }
+
+        async function generateTransactions() {
+            const customerCount = document.getElementById("customerCountTx").value;
+            const perCustomer = document.getElementById("perCustomerTx").value;
+
+            const response = await fetch("/api/generate/transactions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    customer_count: Number(customerCount),
+                    per_customer: Number(perCustomer)
+                })
+            });
+
+            const json = await response.json();
+            currentData = json.data;
+            currentType = "transactions";
+            document.getElementById("outputBox").textContent = JSON.stringify(currentData, null, 2);
+        }
+
+        async function generateEmployees() {
+            const count = document.getElementById("employeeCount").value;
+            const response = await fetch("/api/generate/employees", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ count: Number(count) })
+            });
+
+            const json = await response.json();
+            currentData = json.data;
+            currentType = "employees";
+            document.getElementById("outputBox").textContent = JSON.stringify(currentData, null, 2);
+        }
+
+        async function generateFeedback() {
+            const count = document.getElementById("feedbackCount").value;
+            const response = await fetch("/api/generate/feedback", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ count: Number(count) })
+            });
+
+            const json = await response.json();
+            currentData = json.data;
+            currentType = "feedback";
+            document.getElementById("outputBox").textContent = JSON.stringify(currentData, null, 2);
+        }
+
+        async function downloadCSV() {
+            if (!currentData.length) {
+                alert("Generate data first");
+                return;
+            }
+
+            const response = await fetch(`/api/export/${currentType}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ data: currentData })
+            });
+
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `${currentType}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function copyJSON() {
+            const output = document.getElementById("outputBox").textContent;
+            navigator.clipboard.writeText(output).then(() => {
+                alert("JSON copied to clipboard!");
+            }).catch(() => {
+                alert("Copy failed");
+            });
+        }
+
+        checkStatus();
+    </script>
+</body>
+</html>
